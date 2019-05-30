@@ -1,0 +1,16 @@
+mDuk = 0, 0, 0, 0, C
+CDukTape = 0, 0, 0, 0, C
+modUtil = 0, 0, 0, 0, C
+CResponseBuffer = 0, 0, 0, 0, C
+CWriteBuffer = 0, 0, 0, 0, C
+CVariable = 0, 0, 0, 0, C
+CBreakpoint = 0, 0, 0, 0, C
+modBreakpoints = 0, 0, 0, 0, C
+cCallStack = 0, 0, 0, 0, C
+ucDukDbg = 0, 0, 0, 0, C, 26, 26, 1039, 555, C
+mCOM = 0, 0, 0, 0, C
+CCOMType = 0, 0, 0, 0, C
+CMethod = 0, 0, 0, 0, C
+CCachedObj = 0, 0, 0, 0, C
+CIntellisenseItem = 0, 0, 0, 0, C
+CStatus = 0, 0, 0, 0, C
