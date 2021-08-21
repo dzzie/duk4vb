@@ -13,4 +13,7 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Public objName As String
 Public methods As String 'space seperated
+Public comments As New Collection 'parallel to methods array
+Public path As String
+Public Description As String
 

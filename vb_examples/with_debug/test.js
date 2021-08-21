@@ -1,7 +1,8 @@
 
-a = 1
+a = 0x1122334455667788
 a++;
-alert(a)
+b = a.toString(16)
+alert(b + ' len:' + b.length)
 /* while(a){ //test break
 a++;
 }*/

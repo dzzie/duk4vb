@@ -1,7 +1,7 @@
 Type=Exe
-Reference=*\G{00020430-0000-0000-C000-000000000046}#2.0#0#C:\WINDOWS\system32\stdole2.tlb#OLE Automation
-Reference=*\G{420B2830-E718-11CF-893D-00A0C9054228}#1.0#0#C:\WINDOWS\system32\scrrun.dll#Microsoft Scripting Runtime
-Object={047848A0-21DD-421D-951E-B4B1F3E1718D}#85.0#0; dukDbg.ocx
+Reference=*\G{00020430-0000-0000-C000-000000000046}#2.0#0#C:\Windows\SysWOW64\stdole2.tlb#OLE Automation
+Reference=*\G{420B2830-E718-11CF-893D-00A0C9054228}#1.0#0#C:\Windows\SysWOW64\scrrun.dll#Microsoft Scripting Runtime
+Object={047848A0-21DD-421D-951E-B4B1F3E1718D}#89.0#0; dukdbg.ocx
 Form=frmHostTest.frm
 Object={2668C1EA-1D34-42E2-B89F-6B92F3FF627B}#5.0#0; scivb2.ocx
 IconForm="frmHostTest"
