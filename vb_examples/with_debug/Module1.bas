@@ -34,6 +34,7 @@ Enum cb_type
     cb_StringReturn = 6
     cb_debugger = 7
     cb_alert = 8
+    cb_timeoutCheck = 9
 End Enum
 
 'DukOp declare operation codes..
@@ -329,9 +330,11 @@ End Function
 
 'callback: debugger misc message stream
 '------------------------------
-Public Sub cb_stdout(ByVal t As cb_type, ByVal lpMsg As Long)
+Public Function cb_stdout(ByVal t As cb_type, ByVal lpMsg As Long) As Long
 
     Dim msg As String
+    
+    'timeout not implemented check full ocx it changed..
     
     If t = cb_Fatal Then
     
@@ -339,7 +342,7 @@ Public Sub cb_stdout(ByVal t As cb_type, ByVal lpMsg As Long)
                "is unstable now please save your work and exit." & vbCrLf & vbCrLf & _
                "The specific error message was: " & StringFromPointer(lpMsg), vbCritical, "Fatal Error"
         
-        While Forms.count > 0
+        While Forms.Count > 0
             DoEvents
             Sleep 10
         Wend
@@ -352,11 +355,11 @@ Public Sub cb_stdout(ByVal t As cb_type, ByVal lpMsg As Long)
     If t = cb_Refresh Then
         DoEvents
         Sleep 2
-        Exit Sub
+        Exit Function
     End If
     
-    If lpMsg = 0 Then Exit Sub
-    If forceShutDown Then Exit Sub
+    If lpMsg = 0 Then Exit Function
+    If forceShutDown Then Exit Function
     
     msg = StringFromPointer(lpMsg)
     
@@ -375,7 +378,7 @@ Public Sub cb_stdout(ByVal t As cb_type, ByVal lpMsg As Long)
                 
     End Select
     
-End Sub
+End Function
 
 Public Function doOutput(msg)
     Dim leng As Long

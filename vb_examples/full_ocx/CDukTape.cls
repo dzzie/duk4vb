@@ -65,18 +65,21 @@ Friend Function DebugAttach(Optional attach As Boolean = True) As Boolean
     If attach Then
         If mDebugging Then Exit Function
         'If Not ActiveDebuggerClass Is Nothing Then Exit Function
-        If mTimeout <> 0 Then DukOp opd_ScriptTimeout, 0, 0
+        'If mTimeout <> 0 Then
+        DukOp opd_ScriptTimeout, 0, 0
         If DukOp(opd_debugAttach, hDuk, 1) = 0 Then
             DebugAttach = True
             mDebugging = True
             'Set ActiveDebuggerClass = Me
         Else
-            If mTimeout <> 0 Then DukOp opd_ScriptTimeout, 0, mTimeout
+            'If mTimeout <> 0 Then
+            DukOp opd_ScriptTimeout, 0, mTimeout
         End If
     Else
         If Not mDebugging Then Exit Function
         'If ObjPtr(ActiveDebuggerClass) <> ObjPtr(Me) Then Exit Function
-        If mTimeout <> 0 Then DukOp opd_ScriptTimeout, 0, mTimeout
+        'If mTimeout <> 0 Then
+        DukOp opd_ScriptTimeout, 0, mTimeout
         If DukOp(opd_debugAttach, hDuk, 0) = 0 Then
             DebugAttach = True
             mDebugging = False
@@ -225,6 +228,7 @@ Function AddFile(fpath) As Boolean
     If hDuk = 0 Then Exit Function
     ClearErr
 
+    mDuk.startTime = GetTickCount
     mRunning = True
     Set ActiveDukTapeClass = Me
     rv = mDuk.AddFile(hDuk, CStr(fpath))
@@ -247,6 +251,7 @@ Function Eval(js)
     If hDuk = 0 Then Exit Function
     ClearErr
     
+    mDuk.startTime = GetTickCount
     mRunning = True
     Set ActiveDukTapeClass = Me
     rv = mDuk.Eval(hDuk, CStr(js))

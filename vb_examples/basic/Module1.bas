@@ -25,6 +25,7 @@ Enum cb_type
     cb_ReleaseObj = 5
     cb_StringReturn = 6
     cb_alert = 8
+    cb_timoutCheck = 9
 End Enum
 
 Enum opDuk
@@ -126,9 +127,11 @@ End Function
 
 'callback functions
 '------------------------------
-Public Sub vb_stdout(ByVal t As cb_type, ByVal lpMsg As Long)
+Public Function vb_stdout(ByVal t As cb_type, ByVal lpMsg As Long) As Long
 
     Dim msg As String
+    
+    'timout not implemented check ocx
     
     If t = cb_Fatal Then
     
@@ -149,10 +152,10 @@ Public Sub vb_stdout(ByVal t As cb_type, ByVal lpMsg As Long)
     If t = cb_Refresh Then
         DoEvents
         Sleep 3
-        Exit Sub
+        Exit Function
     End If
     
-    If lpMsg = 0 Then Exit Sub
+    If lpMsg = 0 Then Exit Function
     
     msg = StringFromPointer(lpMsg)
     
@@ -163,7 +166,7 @@ Public Sub vb_stdout(ByVal t As cb_type, ByVal lpMsg As Long)
         Case cb_alert:  MsgBox msg, vbInformation, "Script Alert"
     End Select
     
-End Sub
+End Function
 
 
 Public Function VbLineInput(ByVal buf As Long, ByVal ctx As Long) As Long

@@ -42,14 +42,14 @@ enum opDuk{
 	opd_GetString=5,
 	opd_Destroy=6,
 	opd_LastString=7,
-	opd_ScriptTimeout=8,
+	opd_ScriptTimeout=8, //no longer used
 	opd_debugAttach=9,
 	opd_dbgCoOp = 10,
 	opd_dbgTriggerRead = 12,
 	opd_PushBool = 13
 };
 
-int watchdogTimeout = 0;
+int watchdogTimeout = 0; //no longer used done in vb now less layers..
 int inCreate = 0 ;
 unsigned int startTime = 0;
 unsigned int lastRefresh = 0;
@@ -66,7 +66,7 @@ int __stdcall DukOp(int operation, duk_context *ctx, int arg1, char* arg2){
 	//these do not require a context..
 	switch(operation){
 		case opd_LastString: return mLastString;
-		case opd_ScriptTimeout: 
+		case opd_ScriptTimeout: //no longer used done in vb side now..(less layers)
 			watchdogTimeout = arg1; return 0;
 	}
 
@@ -121,6 +121,9 @@ int ScriptTimeoutCheck(const void *udata)
 { //this is exported strictly for debugging purposes not for use with vb!
 #pragma EXPORT 
 
+	return vbStdOut(cb_timeoutCheck,0);
+
+	/*
 	unsigned int tick = GetTickCount();
 
 	if(inCreate) return 0; //fatal exception if this returns 1 during heap creation..
@@ -140,7 +143,7 @@ int ScriptTimeoutCheck(const void *udata)
 			return 1;
 		}
     }
-    return 0;
+    return 0;*/
 }
 
 static void sandbox_fatal(duk_context *ctx, duk_errcode_t code, const char *msg) {
