@@ -2,6 +2,8 @@
  *  Ecmascript bytecode executor.
  */
 
+extern int DZZIE_FORCE_QUIT;
+
 #include "duk_internal.h"
 
 /*
@@ -2182,6 +2184,9 @@ DUK_INTERNAL void duk_js_execute_bytecode(duk_hthread *exec_thr) {
 #endif
 
 	for (;;) {
+
+		if(DZZIE_FORCE_QUIT == 1) return;
+
 		DUK_ASSERT(thr->callstack_top >= 1);
 		DUK_ASSERT(thr->valstack_top - thr->valstack_bottom == fun->nregs);
 		DUK_ASSERT((duk_size_t) (thr->valstack_top - thr->valstack) == valstack_top_base);

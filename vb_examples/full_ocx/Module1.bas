@@ -6,7 +6,7 @@ Attribute VB_Name = "mDuk"
 Option Explicit
 Public hDukLib As Long
 Public libRefCnt As Long 'used when running in IDE...
-Public startTime As Long
+Public startTime As Date
 
 Public Declare Function DukCreate Lib "Duk4VB.dll" () As Long
 Public Declare Function AddFile Lib "Duk4VB.dll" (ByVal ctx As Long, ByVal jsFile As String) As Long
@@ -52,6 +52,8 @@ Enum opDuk
     opd_dbgCoOp = 10
     opd_dbgTriggerRead = 12
     opd_PushBool = 13 '0=false
+    opd_ForceQuit = 14
+    opd_remoteDebug = 15
 End Enum
 
 'commands we create to send to duktape
@@ -369,24 +371,36 @@ End Function
 '------------------------------
 Public Function cb_stdout(ByVal t As cb_type, ByVal lpMsg As Long) As Long
 
-    Dim msg As String, timeOutMS As Long, curTicks As Long
+    Dim msg As String, timeOutSecs As Long, secs As Long, elapsed As Long
     
-    If t = cb_timeoutCheck Then
+    If t = cb_timeoutCheck Then 'we only get here ever 400 opcode hits to keep callbacks to a minimum
     
-        If Not ActiveDukTapeClass Is Nothing Then
-            timeOutMS = ActiveDukTapeClass.Timeout
-            If timeOutMS > 0 Then
-                curTicks = GetTickCount
-                If (curTicks - startTime) > timeOutMS Then
-                    cb_stdout = 1
-                    Exit Function
-                End If
+        DoEvents
+        debugPrint "timeout check: " & Now
+        
+        If ActiveDukTapeClass Is Nothing Then Exit Function
+
+        secs = ActiveDukTapeClass.Timeout
+        
+        If secs = -1 Then
+            cb_stdout = 1
+            debugPrint "ocx.cb_stdout: secs = -1 force abort"
+            DukOp opd_ForceQuit 'not sure why its not always stopping just with returning 1 but..fu
+            doOutput "Execution manually terminated.."
+        ElseIf secs = 0 Then
+            cb_stdout = 0
+        Else
+            elapsed = Abs(DateDiff("s", startTime, Now))
+            If elapsed > secs Then
+                cb_stdout = 1
+                debugPrintf "ocx.cb_stdout: datediff timeout %d > %d", elapsed, secs
+                DukOp opd_ForceQuit
+                doOutput "Execution timeout " & elapsed & " > " & secs
+            Else
+                cb_stdout = 0
             End If
         End If
 
-        cb_stdout = 0
-        DoEvents
-        Sleep 2
         Exit Function
         
     End If
@@ -395,7 +409,7 @@ Public Function cb_stdout(ByVal t As cb_type, ByVal lpMsg As Long) As Long
     
         MsgBox "A fatal error has occured in Duktape the application " & vbCrLf & _
                "is unstable now please save your work and exit." & vbCrLf & vbCrLf & _
-               "The specific error message was: " & StringFromPointer(lpMsg), vbCritical, "Fatal Error"
+               "The specific error message was: " & StringFromPointer(lpMsg), vbCritical, "OCX Fatal Error"
         
         While 1
             DoEvents
@@ -453,7 +467,7 @@ Public Function doOutput(msg)
 End Function
 
 'call back: prompt function implementation
-Public Function cb_prompt(ByVal buf As Long, ByVal ctx As Long) As Long
+Public Function cb_prompt(ByVal Buf As Long, ByVal ctx As Long) As Long
     Dim b() As Byte
     Dim retVal As String
     cb_prompt = 0 'return value default..
@@ -461,7 +475,7 @@ Public Function cb_prompt(ByVal buf As Long, ByVal ctx As Long) As Long
     Dim Text As String
     Dim def As String
     
-    Text = StringFromPointer(buf)
+    Text = StringFromPointer(Buf)
     def = GetArgAsString(ctx, 1)
     
     retVal = InputBox(Text, "Script Basic Line Input", def)
@@ -479,7 +493,7 @@ End Function
 'call back: debugger is requesting a command to operate on..
 '           vb blocks until user enters command..
 '           this is the duktape read data routine
-Public Function cb_GetDbgCmd(ByVal buf As Long, ByVal sz As Long) As Long
+Public Function cb_GetDbgCmd(ByVal Buf As Long, ByVal sz As Long) As Long
     
     Dim i As Long
     Dim cmd_length As Long
@@ -491,7 +505,7 @@ topLine:
         If Not RespBuffer.isEmpty Then
             
             If RespBuffer.GetBuf(sz, b) Then
-                CopyMemory ByVal buf, ByVal VarPtr(b(0)), sz
+                CopyMemory ByVal Buf, ByVal VarPtr(b(0)), sz
                 cb_GetDbgCmd = sz
             End If
             
@@ -564,7 +578,7 @@ topLine:
         If Not RespBuffer.isEmpty Then
             
             If RespBuffer.GetBuf(sz, b) Then
-                CopyMemory ByVal buf, ByVal VarPtr(b(0)), sz
+                CopyMemory ByVal Buf, ByVal VarPtr(b(0)), sz
                 cb_GetDbgCmd = sz
             End If
             
@@ -577,14 +591,14 @@ End Function
 'call back: debugger is sending our interface data,
 '           this happens in multiple stages until a single EOM byte is received (00)
 '           this is the duktape write data routine
-Public Function cb_DebugDataIncoming(ByVal buf As Long, ByVal sz As Long) As Long
+Public Function cb_DebugDataIncoming(ByVal Buf As Long, ByVal sz As Long) As Long
 
-    If buf = 0 Or sz = 0 Then Exit Function 'shouldnt happen...
+    If Buf = 0 Or sz = 0 Then Exit Function 'shouldnt happen...
     If Not isControlActive() Then Exit Function
     
     Dim b() As Byte
     ReDim b(sz - 1) 'b is 0 based,
-    CopyMemory b(0), ByVal buf, sz
+    CopyMemory b(0), ByVal Buf, sz
     'Debug.Print bHexDump(b)
      
     RecvBuffer.WriteBuf b()
@@ -742,21 +756,21 @@ Function HandleGetVar() 'maybe better named read_tval
                 
             Case &H10: '0x10 <int32>    integer     4-byte integer, signed 32-bit integer in network order follows initial byte
                     .varType = "integer"
-                    .value = RecvBuffer.ReadInt(False)
+                    .Value = RecvBuffer.ReadInt(False)
             
             Case &H11: '0x11 <uint32> <data>    string  4-byte string, unsigned 32-bit string length in network order and string data follows initial byte
                     .varType = "string"
-                    .value = RecvBuffer.ReadString(False)
+                    .Value = RecvBuffer.ReadString(False)
             
             Case &H16: .varType = "undefined"                 '0x16    undefined   Ecmascript "undefined"
             Case &H17: .varType = "null"                      '0x17    null    Ecmascript "null"
-            Case &H18: .varType = "boolean": .value = True    '0x18    true    Ecmascript "true"
-            Case &H19:  .varType = "boolean": .value = False  '0x19    false   Ecmascript "false"
+            Case &H18: .varType = "boolean": .Value = True    '0x18    true    Ecmascript "true"
+            Case &H19:  .varType = "boolean": .Value = False  '0x19    false   Ecmascript "false"
             Case &H1A: .varType = "double":                   '0x1a <8 bytes>  number  IEEE double (network endian)
-                       .value = RecvBuffer.ReadDouble()
+                       .Value = RecvBuffer.ReadDouble()
                        
             '0x1b <uint8> <uint8> <data>     object  Class number, pointer length, and pointer data (network endian)
-            Case &H1B: .varType = "object": .value = "[Object]"
+            Case &H1B: .varType = "object": .Value = "[Object]"
             
             '0x1c <uint8> <data>     pointer     Pointer length, pointer data (network endian)
             '0x1d <uint16> <uint8> <data>    lightfunc   Lightfunc flags, pointer length, pointer data (network endian)

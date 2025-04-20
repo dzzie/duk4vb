@@ -441,7 +441,7 @@ End Sub
 
 Private Sub Form_Unload(Cancel As Integer)
     If Not duk Is Nothing Then
-        duk.Timeout = 1
+        duk.Timeout = -1
         forceShutDown = True
         SendDebuggerCmd dc_stepInto
         If duk.isDebugging Then duk.DebugAttach False
@@ -475,6 +475,8 @@ Private Sub tbarDebug_ButtonClick(ByVal Button As MSComctlLib.Button)
     Dim curline As Long
     Dim txt As String
     
+    On Error Resume Next
+    
     Select Case Button.Key
         Case "Run":               If running Then SendDebuggerCmd dc_Resume Else ExecuteScript
         Case "Start Debugger":    If running Then SendDebuggerCmd dc_Resume Else ExecuteScript True
@@ -500,7 +502,7 @@ Private Sub tbarDebug_ButtonClick(ByVal Button As MSComctlLib.Button)
                                     
         Case "Stop":
                                   userStop = True
-                                  duk.Timeout = 1
+                                  duk.Timeout = -1
                                   SendDebuggerCmd dc_stepInto
                         
         
@@ -532,7 +534,7 @@ Private Sub ExecuteScript(Optional withDebugger As Boolean)
         duk.Timeout = 0
         duk.DebugAttach
     Else
-        duk.Timeout = 7000 'set to 0 to disabled
+        duk.Timeout = 7 'set to 0 to disabled
     End If
      
     WriteFile curFile, scivb.Text
@@ -626,7 +628,7 @@ Private Sub Form_Resize()
 End Sub
 
 Private Sub SetLastColumnWidth(lv As ListView)
-    lv.ColumnHeaders(lv.ColumnHeaders.count).Width = lv.Width - lv.ColumnHeaders(lv.ColumnHeaders.count).Left - 100
+    lv.ColumnHeaders(lv.ColumnHeaders.Count).Width = lv.Width - lv.ColumnHeaders(lv.ColumnHeaders.Count).Left - 100
 End Sub
 
 Private Sub tmrSetStatus_Timer()

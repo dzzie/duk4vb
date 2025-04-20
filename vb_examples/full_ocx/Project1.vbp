@@ -19,6 +19,7 @@ Class=CCachedObj; CCachedObj.cls
 Class=CIntellisenseItem; CIntellisenseItem.cls
 Object={2668C1EA-1D34-42E2-B89F-6B92F3FF627B}#5.0#0; scivb2.ocx
 Class=CStatus; CStatus.cls
+Module=modDebugPrint; DebugPrint.bas
 Startup="(None)"
 HelpFile=""
 NoControlUpgrade=1

@@ -6,6 +6,7 @@ Attribute VB_Name = "mDuk"
 Option Explicit
 Public hDukLib As Long
 Public libRefCnt As Long 'used when running in IDE...
+Global startTime As Date
 
 Public Declare Function DukCreate Lib "Duk4VB.dll" () As Long
 Public Declare Function AddFile Lib "Duk4VB.dll" (ByVal ctx As Long, ByVal jsFile As String) As Long
@@ -332,9 +333,26 @@ End Function
 '------------------------------
 Public Function cb_stdout(ByVal t As cb_type, ByVal lpMsg As Long) As Long
 
-    Dim msg As String
+    Dim msg As String, secs As Long
     
-    'timeout not implemented check full ocx it changed..
+    If t = cb_timeoutCheck Then
+        If ActiveDebuggerClass Is Nothing Then
+            cb_stdout = 1
+            Exit Function
+        End If
+        secs = ActiveDebuggerClass.Timeout
+        If secs = -1 Then
+            cb_stdout = 1
+        ElseIf secs = 0 Then
+            cb_stdout = 0
+        ElseIf DateDiff("s", startTime, Now) > secs Then
+            cb_stdout = 1
+        Else
+            cb_stdout = 0
+        End If
+        DoEvents
+        Exit Function
+    End If
     
     If t = cb_Fatal Then
     

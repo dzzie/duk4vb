@@ -65,21 +65,18 @@ Friend Function DebugAttach(Optional attach As Boolean = True) As Boolean
     If attach Then
         If mDebugging Then Exit Function
         'If Not ActiveDebuggerClass Is Nothing Then Exit Function
-        'If mTimeout <> 0 Then
-        DukOp opd_ScriptTimeout, 0, 0
+        If mTimeout <> 0 Then DukOp opd_ScriptTimeout, 0, 0
         If DukOp(opd_debugAttach, hDuk, 1) = 0 Then
             DebugAttach = True
             mDebugging = True
             'Set ActiveDebuggerClass = Me
         Else
-            'If mTimeout <> 0 Then
-            DukOp opd_ScriptTimeout, 0, mTimeout
+            If mTimeout <> 0 Then DukOp opd_ScriptTimeout, 0, mTimeout
         End If
     Else
         If Not mDebugging Then Exit Function
         'If ObjPtr(ActiveDebuggerClass) <> ObjPtr(Me) Then Exit Function
-        'If mTimeout <> 0 Then
-        DukOp opd_ScriptTimeout, 0, mTimeout
+        If mTimeout <> 0 Then DukOp opd_ScriptTimeout, 0, mTimeout
         If DukOp(opd_debugAttach, hDuk, 0) = 0 Then
             DebugAttach = True
             mDebugging = False
@@ -90,7 +87,7 @@ End Function
 
 Property Let Timeout(v As Long)
     mTimeout = v
-    DukOp opd_ScriptTimeout, 0, v
+    DukOp opd_ScriptTimeout, 0, v 'still required for immediate kills
 End Property
 
 Property Get Timeout() As Long
@@ -147,7 +144,7 @@ Private Function ParseObjectToCache(name As String, obj As Object) As Boolean
     
     If KeyExistsInCollection(m_comTypes, name) Then
         Set cc = m_comTypes(name)
-        If cc.errors.Count = 0 Then ParseObjectToCache = True
+        If cc.errors.count = 0 Then ParseObjectToCache = True
         Exit Function
     End If
         
@@ -228,7 +225,8 @@ Function AddFile(fpath) As Boolean
     If hDuk = 0 Then Exit Function
     ClearErr
 
-    mDuk.startTime = GetTickCount
+    debugPrint "ocx: addfile start time: " & fpath
+    mDuk.startTime = Now
     mRunning = True
     Set ActiveDukTapeClass = Me
     rv = mDuk.AddFile(hDuk, CStr(fpath))
@@ -251,7 +249,8 @@ Function Eval(js)
     If hDuk = 0 Then Exit Function
     ClearErr
     
-    mDuk.startTime = GetTickCount
+    debugPrint "ocx: eval start time sz:" & Len(js) & " " & Left(js, 10) & "..."
+    mDuk.startTime = Now
     mRunning = True
     Set ActiveDukTapeClass = Me
     rv = mDuk.Eval(hDuk, CStr(js))

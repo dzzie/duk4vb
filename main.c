@@ -1,7 +1,12 @@
 #include "./duk/duktape.h"
 #include <conio.h>
 #include "vb.h"
+#include "dbg.h"
 #include <windows.h>
+
+//hacked into duk_js_executor.c duk_js_execute_bytecode()
+int DZZIE_FORCE_QUIT = 0;
+int ENABLE_REMOTE_DEBUG = 0;
 
 //#include "./duk/duk_hthread.h"
 
@@ -25,6 +30,12 @@ modifications to duktape from origial (base 1.2.1)
 
 #define real_fwrite fwrite
 
+int ScriptTimeoutCheck(const void*udata); 
+
+#define DUK_OPT_EXEC_TIMEOUT_CHECK  ScriptTimeoutCheck
+#define DUK_OPT_INTERRUPT_COUNTER 1
+
+
 vbCallback vbStdOut = 0;
 vbHostResolverCallback vbHostResolver = 0;
 vbDbgCallback vbLineInput = 0;
@@ -46,10 +57,11 @@ enum opDuk{
 	opd_debugAttach=9,
 	opd_dbgCoOp = 10,
 	opd_dbgTriggerRead = 12,
-	opd_PushBool = 13
+	opd_PushBool = 13,
+	opd_forceQuit = 14,
+	opd_remoteDebug = 15
 };
 
-int watchdogTimeout = 0; //no longer used done in vb now less layers..
 int inCreate = 0 ;
 unsigned int startTime = 0;
 unsigned int lastRefresh = 0;
@@ -65,9 +77,20 @@ int __stdcall DukOp(int operation, duk_context *ctx, int arg1, char* arg2){
 	
 	//these do not require a context..
 	switch(operation){
+
+		case opd_remoteDebug:
+				ENABLE_REMOTE_DEBUG = arg1;
+				return 0;
+
+		case opd_forceQuit: 
+				DZZIE_FORCE_QUIT = 1;
+				return 0;
+
 		case opd_LastString: return mLastString;
-		case opd_ScriptTimeout: //no longer used done in vb side now..(less layers)
-			watchdogTimeout = arg1; return 0;
+
+		case opd_ScriptTimeout: return 0; //no longer used done in vb side now..(less layers)
+				//watchdogTimeout = arg1; 
+				
 	}
 
 	if(ctx == 0) return -1;
@@ -117,33 +140,27 @@ int __stdcall setLastString(const char* s){ //accepts null string to just free l
 }
 
 
+//return 1 to stop, 0 to continue..had problems with 1 not always stopping through!
+//only called every so often - exported strictly for debugging purposes not for use with vb!
+//https://github.com/svaarala/duktape/blob/master/doc/sandboxing.rst#bytecode-execution-timeout-details
 int ScriptTimeoutCheck(const void *udata)
-{ //this is exported strictly for debugging purposes not for use with vb!
+{ 
 #pragma EXPORT 
 
-	return vbStdOut(cb_timeoutCheck,0);
-
-	/*
-	unsigned int tick = GetTickCount();
-
-	if(inCreate) return 0; //fatal exception if this returns 1 during heap creation..
-
-	if(vbStdOut){
-		if(tick - lastRefresh > 250){
-			vbStdOut(cb_Refresh,0);
-			lastRefresh = tick;
-		}
+	if(inCreate){
+		dbgmsg("dukdll: timeout check in create ignored");	
+		return 0; //fatal exception if this returns 1 during heap creation..
 	}
 
-	if(watchdogTimeout == 0) return 0; //disabled
-	if(watchdogTimeout < 0) return 1; //force stop
-
-    if (watchdogTimeout) {
-		if (tick - startTime > watchdogTimeout){  
-			return 1;
-		}
-    }
-    return 0;*/
+	if(vbStdOut){
+		int r = vbStdOut(cb_timeoutCheck,0);
+		dbgmsgf("dukdll: timeout check vb returned: %d",r);	
+		return r;
+	}else{
+		dbgmsg("dukdll: no vbstdout!");
+		return 0;
+	}
+ 
 }
 
 static void sandbox_fatal(duk_context *ctx, duk_errcode_t code, const char *msg) {
@@ -310,6 +327,8 @@ int __stdcall DukCreate(){
 	//duk_context *ctx = duk_create_heap_default();
 	duk_context *ctx = 0;
 	inCreate = 1;
+	DZZIE_FORCE_QUIT = 0;
+	dbgmsg("dukdll: DukCreate");
 	ctx = duk_create_heap(0, 0, 0, ScriptTimeoutCheck, sandbox_fatal);
 	inCreate = 0;
 	RegisterNativeHandlers(ctx);

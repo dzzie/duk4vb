@@ -42,6 +42,8 @@ extern vbDbgCallback vbLineInput;
 	extern int my_fprintf(FILE* fp, char* format, ...);
 */
 
+
+
 #ifdef __cplusplus
 }
 #endif

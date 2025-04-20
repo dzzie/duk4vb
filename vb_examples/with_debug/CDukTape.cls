@@ -123,6 +123,8 @@ Function AddFile(fPath) As Boolean
     If hDuk = 0 Then Exit Function
     ClearErr
 
+    Set ActiveDebuggerClass = Me 'for timeout
+    mDuk.startTime = Now
     mRunning = True
     rv = mDuk.AddFile(hDuk, CStr(fPath))
     mRunning = False
@@ -156,6 +158,8 @@ Function Eval(js)
     If hDuk = 0 Then Exit Function
     ClearErr
     
+    Set ActiveDebuggerClass = Me 'for timeout
+    mDuk.startTime = Now
     mRunning = True
     rv = mDuk.Eval(hDuk, CStr(js))
     mRunning = False

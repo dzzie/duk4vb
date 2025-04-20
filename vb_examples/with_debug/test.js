@@ -6,6 +6,7 @@ alert(b + ' len:' + b.length)
 /* while(a){ //test break
 a++;
 }*/
+ while(1){;}
  
 var gs = "string1"
 print(1)

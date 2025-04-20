@@ -1,5 +1,5 @@
 VERSION 5.00
-Object = "{831FDD16-0C5C-11D2-A9FC-0000F8754DA1}#2.0#0"; "mscomctl.ocx"
+Object = "{831FDD16-0C5C-11D2-A9FC-0000F8754DA1}#2.0#0"; "MSCOMCTL.OCX"
 Object = "{2668C1EA-1D34-42E2-B89F-6B92F3FF627B}#5.0#0"; "scivb2.ocx"
 Begin VB.UserControl ucDukDbg 
    ClientHeight    =   7560
@@ -185,9 +185,9 @@ Begin VB.UserControl ucDukDbg
    End
    Begin MSComctlLib.Toolbar tbarDebug 
       Height          =   330
-      Left            =   90
+      Left            =   60
       TabIndex        =   3
-      Top             =   90
+      Top             =   60
       Width           =   3870
       _ExtentX        =   6826
       _ExtentY        =   582
@@ -312,7 +312,7 @@ Private WithEvents ownerForm As Form
 Attribute ownerForm.VB_VarHelpID = -1
 Private m_DbgState As dbgStates
 Private isInitilized As Boolean
-Private m_timeout As Long
+Private m_timeout As Long 'in seconds, 0 by default
 
 Property Get Timeout() As Long
     Timeout = m_timeout
@@ -320,6 +320,7 @@ End Property
 
 Property Let Timeout(v As Long)
     m_timeout = v
+    If Not duk Is Nothing Then duk.Timeout = v
 End Property
 
 'use this to get full access to the editor:
@@ -561,7 +562,7 @@ Private Sub scivb_DoubleClick()
     
 End Sub
 
-Private Sub scivb_MouseUp(Button As Integer, Shift As Integer, x As Long, Y As Long)
+Private Sub scivb_MouseUp(Button As Integer, Shift As Integer, X As Long, Y As Long)
     On Error Resume Next
     
     Dim sel As String
@@ -604,8 +605,8 @@ Private Sub tbarDebug_ButtonClick(ByVal Button As MSComctlLib.Button)
     End If
     
     Select Case Button.key
-        Case "Run":               If running Then SendDebuggerCmd dc_Resume Else ExecuteScript
-        Case "Start Debugger":    If running Then SendDebuggerCmd dc_Resume Else ExecuteScript True
+        Case "Run":               debugClear: If running Then SendDebuggerCmd dc_Resume Else ExecuteScript
+        Case "Start Debugger":    debugClear: If running Then SendDebuggerCmd dc_Resume Else ExecuteScript True
         Case "Step In":           SendDebuggerCmd dc_stepInto
         Case "Step Over":         SendDebuggerCmd dc_StepOver
         Case "Step Out":          SendDebuggerCmd dc_stepout
@@ -628,9 +629,15 @@ Private Sub tbarDebug_ButtonClick(ByVal Button As MSComctlLib.Button)
                                   ToggleBreakPoint curFile, curline, scivb.GetLineText(curline), Me
                                     
         Case "Stop":
-                                  userStop = True
-                                  duk.Timeout = -1
-                                  SendDebuggerCmd dc_stepInto
+                                  debugPrint "stop isDebugging: " & duk.isDebugging
+                                  If duk.isDebugging Then
+                                        userStop = True
+                                        duk.Timeout = -1
+                                        SendDebuggerCmd dc_stepInto
+                                  Else
+                                        DukOp opd_ForceQuit
+                                  End If
+                                  
                         
         
     End Select
@@ -741,7 +748,9 @@ End Sub
  
 Private Sub UserControl_Initialize()
     SetToolBarIcons
-    m_timeout = 7000
+    m_timeout = 0 'now we can force quit scripts any time so just disable by default
+    DBG_EXT_HIDE_ERROR = True
+    'DBG_PRINT_EXTERNAL = True 'can set at runtime with remote=1 in duk> prompt
 End Sub
 
 Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
@@ -848,7 +857,7 @@ Private Sub scivb_MouseDwellStart(lline As Long, Position As Long)
          If InStr(curWord, "[") > 0 Then
             Set cv = SyncEval(curWord)
             If cv.varType = "undefined" Then Exit Sub
-            If Len(cv.value) = 0 Then Exit Sub
+            If Len(cv.Value) = 0 Then Exit Sub
          Else
             Set cv = SyncGetVarValue(curWord)
          End If
@@ -856,7 +865,7 @@ Private Sub scivb_MouseDwellStart(lline As Long, Position As Long)
          If cv.varType <> DUK_VAR_NOT_FOUND Then
             scivb.SelStart = Position 'so call tip shows right under it..
             scivb.SelLength = 0
-            txt = cv.value
+            txt = cv.Value
             If Len(txt) = 0 Then
                 txt = cv.varType
             ElseIf Len(txt) > 25 Then
@@ -880,6 +889,18 @@ Private Sub txtCmd_KeyPress(KeyAscii As Integer)
     If KeyAscii <> 13 Then Exit Sub 'wait for user to press return key
     KeyAscii = 0 'eat the keypress to prevent vb from doing a msgbeep
     
+    If txtCmd.Text = "remote=1" Then
+        DBG_PRINT_EXTERNAL = True
+        DukOp opd_remoteDebug, , 1
+        txtCmd.Text = Empty
+        Exit Sub
+    ElseIf txtCmd.Text = "remote=0" Then
+        DBG_PRINT_EXTERNAL = False
+        DukOp opd_remoteDebug, , 0
+        txtCmd.Text = Empty
+        Exit Sub
+    End If
+    
     If Left(txtCmd.Text, 1) = "." Or txtCmd.Text = "?" Then
         handleDebuggerCmdLine txtCmd
         txtCmd = Empty
@@ -891,8 +912,8 @@ Private Sub txtCmd_KeyPress(KeyAscii As Integer)
     
     Set v = SyncEval(txtCmd.Text)
     If v.varType = "undefined" Then Exit Sub
-    If Len(v.value) = 0 Then Exit Sub
-    doOutput v.value
+    If Len(v.Value) = 0 Then Exit Sub
+    doOutput v.Value
     
 End Sub
 
@@ -905,7 +926,7 @@ Sub handleDebuggerCmdLine(cmdLine As String)
     Dim o As CCachedObj
     Dim b As CBreakpoint
     Dim cmd As String
-    Dim x
+    Dim X
     
     args = Split(cmdLine, " ")
     cmd = LCase(args(0))
@@ -922,7 +943,7 @@ Sub handleDebuggerCmdLine(cmdLine As String)
     End If
     
     If Left(cmd, 8) = ".objs" Then
-        If objCache.Count = 0 Then
+        If objCache.count = 0 Then
             push ret, "No scriptable objects have been added by host"
         Else
             For Each o In objCache
@@ -933,17 +954,17 @@ Sub handleDebuggerCmdLine(cmdLine As String)
             
     
     If cmd = ".libs" Then
-        If libFiles.Count = 0 Then
+        If libFiles.count = 0 Then
             push ret, "No libraries script files have been added by host"
         Else
-            For Each x In libFiles
-                push ret, x
+            For Each X In libFiles
+                push ret, X
             Next
         End If
     End If
     
     If cmd = ".bl" Then
-        If modBreakpoints.breakpoints.Count = 0 Then
+        If modBreakpoints.breakpoints.count = 0 Then
             push ret, "No breakpoints set"
         Else
             For Each b In modBreakpoints.breakpoints
@@ -953,10 +974,10 @@ Sub handleDebuggerCmdLine(cmdLine As String)
     End If
     
     If cmd = ".timeout" Then
-        x = CLng(args(1))
+        X = CLng(args(1))
         If Err.Number = 0 Then
-            Me.Timeout = CLng(x)
-            push ret, "Timeout set to " & x
+            Me.Timeout = CLng(X)
+            push ret, "Timeout set to " & X & " seconds"
         Else
             push ret, "Error setting timeout: " & Err.Description
         End If
